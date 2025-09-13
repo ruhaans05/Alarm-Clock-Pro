@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alarm Clock Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .day-checkbox:checked + label { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl mx-auto bg-gray-800 rounded-2xl shadow-lg p-6 space-y-6">
+        
+        <header class="text-center">
+            <h1 class="text-3xl font-bold text-white">Alarm Clock Pro</h1>
+            <p id="currentTime" class="text-lg text-gray-400 mt-1">Loading...</p>
+        </header>
+
+        <!-- AI Command Section -->
+        <section id="ai-command-section" class="bg-gray-700/50 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold mb-3 text-white">Smart Alarm Assistant</h2>
+            <div class="flex gap-2">
+                <input type="text" id="aiCommandInput" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-indigo-500" placeholder="e.g., set an alarm for 8am tomorrow...">
+                <button id="processAiCommandBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors">Go</button>
+            </div>
+            <p id="aiStatus" class="text-center text-sm mt-2 text-yellow-400 h-5"></p>
+        </section>
+
+
+        <!-- Alarms List -->
+        <section id="alarms-list-section">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-white">Your Alarms</h2>
+                <button id="addAlarmBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
+                    + Add Alarm
+                </button>
+            </div>
+            <div id="alarmsContainer" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <!-- Alarm items will be injected here -->
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Alarm Modal -->
+    <div id="alarmModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md space-y-5 transform transition-all scale-95 opacity-0" id="modalContent">
+            <h2 class="text-2xl font-bold text-center text-white" id="modalTitle">Set Alarm</h2>
+            
+            <input type="hidden" id="alarmId">
+
+            <div>
+                <label for="alarmName" class="block text-sm font-medium text-gray-300 mb-1">Alarm Name</label>
+                <input type="text" id="alarmName" placeholder="e.g., Morning Wake Up" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label for="alarmTime" class="block text-sm font-medium text-gray-300 mb-1">Alarm Time</label>
+                <input type="time" id="alarmTime" required class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <!-- Recurring Days -->
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Recur on</label>
+                <div class="grid grid-cols-4 md:grid-cols-7 gap-2">
+                    <div class="text-center" data-day="1"><input id="day-mon" type="checkbox" class="hidden day-checkbox"><label for="day-mon" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Mon</label></div>
+                    <div class="text-center" data-day="2"><input id="day-tue" type="checkbox" class="hidden day-checkbox"><label for="day-tue" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Tue</label></div>
+                    <div class="text-center" data-day="3"><input id="day-wed" type="checkbox" class="hidden day-checkbox"><label for="day-wed" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Wed</label></div>
+                    <div class="text-center" data-day="4"><input id="day-thu" type="checkbox" class="hidden day-checkbox"><label for="day-thu" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Thu</label></div>
+                    <div class="text-center" data-day="5"><input id="day-fri" type="checkbox" class="hidden day-checkbox"><label for="day-fri" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Fri</label></div>
+                    <div class="text-center" data-day="6"><input id="day-sat" type="checkbox" class="hidden day-checkbox"><label for="day-sat" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Sat</label></div>
+                    <div class="text-center" data-day="0"><input id="day-sun" type="checkbox" class="hidden day-checkbox"><label for="day-sun" class="cursor-pointer block border border-gray-600 rounded-full px-3 py-1.5 text-sm hover:bg-gray-700 transition-colors">Sun</label></div>
+                </div>
+            </div>
+
+            <div>
+                <label for="runUntil" class="block text-sm font-medium text-gray-300 mb-1">Run Until (Optional)</label>
+                <input type="date" id="runUntil" class="w-full bg-gray-900 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            
+            <div class="flex justify-end gap-4 pt-4">
+                <button id="cancelAlarm" class="px-5 py-2 bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-md transition-colors">Cancel</button>
+                <button id="saveAlarm" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Backend API URL
+    const API_URL = 'http://localhost:8080/api/alarms';
+
+    // UI ELEMENTS
+    const currentTimeEl = document.getElementById('currentTime');
+    const alarmsContainer = document.getElementById('alarmsContainer');
+    const addAlarmBtn = document.getElementById('addAlarmBtn');
+    const alarmModal = document.getElementById('alarmModal');
+    const modalContent = document.getElementById('modalContent');
+    const modalTitle = document.getElementById('modalTitle');
+    const saveAlarmBtn = document.getElementById('saveAlarm');
+    const cancelAlarmBtn = document.getElementById('cancelAlarm');
+    const alarmIdInput = document.getElementById('alarmId');
+    const alarmNameInput = document.getElementById('alarmName');
+    const alarmTimeInput = document.getElementById('alarmTime');
+    const runUntilInput = document.getElementById('runUntil');
+    const aiCommandInput = document.getElementById('aiCommandInput');
+    const processAiCommandBtn = document.getElementById('processAiCommandBtn');
+    const aiStatus = document.getElementById('aiStatus');
+
+    let alarmsCache = [];
+
+    // --- INITIALIZATION ---
+    setInterval(updateTime, 1000);
+    updateTime();
+    fetchAllAlarms();
+
+    // --- CORE LOGIC ---
+    function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const dateString = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        currentTimeEl.textContent = `${dateString} | ${timeString}`;
+    }
+
+    function formatTimeForDisplay(timeString) {
+        if (!timeString) return '';
+        const [hour, minute] = timeString.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hour, minute, 0, 0);
+        return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    // --- API CALLS ---
+    async function fetchAllAlarms() {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const alarms = await response.json();
+            alarmsCache = alarms;
+            renderAlarms(alarms);
+        } catch (error) {
+            console.error('Failed to fetch alarms:', error);
+            alarmsContainer.innerHTML = `<p class="text-center text-red-500">Could not connect to the backend.</p>`;
+        }
+    }
+
+    async function saveAlarmToServer(alarmData) {
+        const method = alarmData.id ? 'PUT' : 'POST';
+        const url = alarmData.id ? `${API_URL}/${alarmData.id}` : API_URL;
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(alarmData)
+            });
+            if (!response.ok) throw new Error('Failed to save alarm');
+            await fetchAllAlarms(); // Refresh list
+        } catch (error) {
+            console.error('Error saving alarm:', error);
+        }
+    }
+
+    async function deleteAlarmFromServer(alarmId) {
+        try {
+            const response = await fetch(`${API_URL}/${alarmId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Failed to delete alarm');
+            await fetchAllAlarms();
+        } catch (error) {
+            console.error('Error deleting alarm:', error);
+        }
+    }
+    
+    async function toggleAlarmOnServer(alarmId) {
+        try {
+            const response = await fetch(`${API_URL}/${alarmId}/toggle`, { method: 'PATCH' });
+            if (!response.ok) throw new Error('Failed to toggle alarm');
+            await fetchAllAlarms();
+        } catch (error) {
+            console.error('Error toggling alarm:', error);
+        }
+    }
+
+    async function processAiCommand(command) {
+        aiStatus.textContent = 'Processing...';
+        processAiCommandBtn.disabled = true;
+        try {
+            const response = await fetch(`${API_URL}/process-command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+            const result = await response.json();
+            aiStatus.textContent = result.message;
+            if (result.data) {
+                alarmsCache = result.data;
+                renderAlarms(result.data);
+            }
+        } catch (error) {
+            console.error('Error processing command:', error);
+            aiStatus.textContent = 'Failed to process command.';
+        } finally {
+            processAiCommandBtn.disabled = false;
+            aiCommandInput.value = '';
+            setTimeout(() => aiStatus.textContent = '', 5000);
+        }
+    }
+
+    // --- UI RENDERING & MODAL ---
+    function renderAlarms(alarms) {
+        alarmsContainer.innerHTML = '';
+        if (!alarms || alarms.length === 0) {
+            alarmsContainer.innerHTML = `<p class="text-center text-gray-500">No alarms set. Add one to get started!</p>`;
+            return;
+        }
+        
+        // Sort alarms by time
+        alarms.sort((a, b) => a.time.localeCompare(b.time));
+        
+        alarms.forEach(alarm => {
+            const alarmEl = document.createElement('div');
+            alarmEl.className = 'flex items-center justify-between bg-gray-700/70 p-4 rounded-lg';
+            alarmEl.dataset.id = alarm.id;
+
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const recurringDays = alarm.daysOfWeek.sort().map(d => days[d]).join(', ');
+            
+            let recurringText = alarm.name ? `${alarm.name} | ` : '';
+            recurringText += recurringDays ? recurringDays : 'Once';
+            
+            let recurrenceRule = '';
+            if (alarm.endDate) {
+                recurrenceRule += ` until ${new Date(alarm.endDate + 'T00:00:00').toLocaleDateString()}`;
+            }
+
+            alarmEl.innerHTML = `
+                <div>
+                    <p class="text-2xl font-semibold text-white">${formatTimeForDisplay(alarm.time)}</p>
+                    <p class="text-sm text-gray-400">${recurringText}${recurrenceRule}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer toggle-alarm" ${alarm.active ? 'checked' : ''}>
+                        <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                    <button class="edit-alarm p-2 text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/></svg></button>
+                    <button class="delete-alarm p-2 text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5z"/></svg></button>
+                </div>
+            `;
+            alarmsContainer.appendChild(alarmEl);
+        });
+    }
+
+    function openModal(alarm = null) {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        alarmModal.classList.remove('hidden');
+
+        if (alarm) {
+            modalTitle.textContent = 'Edit Alarm';
+            alarmIdInput.value = alarm.id;
+            alarmNameInput.value = alarm.name || '';
+            alarmTimeInput.value = alarm.time;
+            document.querySelectorAll('.day-checkbox').forEach(cb => {
+                const day = parseInt(cb.closest('[data-day]').dataset.day);
+                cb.checked = alarm.daysOfWeek.includes(day);
+            });
+            runUntilInput.value = alarm.endDate || '';
+        } else {
+            modalTitle.textContent = 'Add New Alarm';
+            alarmIdInput.value = '';
+            alarmNameInput.value = '';
+            alarmTimeInput.value = new Date().toTimeString().substring(0, 5);
+            document.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = false);
+            runUntilInput.value = '';
+        }
+    }
+
+    function closeModal() {
+        modalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => alarmModal.classList.add('hidden'), 150);
+    }
+
+    // --- EVENT HANDLERS ---
+    addAlarmBtn.addEventListener('click', () => openModal());
+    cancelAlarmBtn.addEventListener('click', closeModal);
+    alarmModal.addEventListener('click', (e) => {
+        if (e.target === alarmModal) closeModal();
+    });
+
+    saveAlarmBtn.addEventListener('click', () => {
+        const id = alarmIdInput.value || null;
+        const time = alarmTimeInput.value;
+        if (!time) {
+            alert('Please select a time for the alarm.');
+            return;
+        }
+        
+        const daysOfWeek = Array.from(document.querySelectorAll('.day-checkbox:checked'))
+            .map(cb => parseInt(cb.closest('[data-day]').dataset.day));
+            
+        const alarmData = {
+            id: id,
+            name: alarmNameInput.value,
+            time,
+            daysOfWeek,
+            isActive: true,
+            endDate: runUntilInput.value || null
+        };
+        
+        saveAlarmToServer(alarmData);
+        closeModal();
+    });
+
+    alarmsContainer.addEventListener('click', e => {
+        const target = e.target.closest('button, .toggle-alarm');
+        if (!target) return;
+        
+        const alarmEl = target.closest('[data-id]');
+        const alarmId = alarmEl.dataset.id;
+        
+        if (target.classList.contains('delete-alarm')) {
+            deleteAlarmFromServer(alarmId);
+        } else if (target.classList.contains('edit-alarm')) {
+            const alarm = alarmsCache.find(a => a.id == alarmId);
+            openModal(alarm);
+        } else if (target.classList.contains('toggle-alarm')) {
+            toggleAlarmOnServer(alarmId);
+        }
+    });
+    
+    processAiCommandBtn.addEventListener('click', () => {
+        const command = aiCommandInput.value.trim();
+        if (command) {
+            processAiCommand(command);
+        }
+    });
+    aiCommandInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            processAiCommandBtn.click();
+        }
+    });
+});
+</script>
+
+</body>
+</html>
+
