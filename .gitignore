@@ -1,7 +1,7 @@
-Ignore IDE files and build outputs
+#Ignore IDE files and build outputs
 .idea/
 target/
 *.iml
 
-Ignore sensitive environment variables
+#Ignore sensitive environment variables
 .env
