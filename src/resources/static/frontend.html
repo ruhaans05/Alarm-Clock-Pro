@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alarm Clock Pro</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; }
         ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
@@ -26,8 +26,17 @@
             <p id="currentTime" class="text-lg text-gray-400 mt-1">Loading...</p>
         </header>
 
+        <!-- Notification Control Section -->
+        <section id="notification-section" class="bg-gray-700/50 p-4 rounded-lg text-center">
+             <button id="enableNotificationsBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors">
+                Enable Notifications
+            </button>
+            <p id="notificationStatus" class="text-sm mt-2 h-5"></p>
+        </section>
+
         <!-- AI Command Section -->
         <section id="ai-command-section" class="bg-gray-700/50 p-4 rounded-lg">
+            <!-- ... (no changes in this section) ... -->
             <h2 class="text-xl font-semibold mb-3 text-white">Smart Alarm Assistant</h2>
             <div class="flex gap-2">
                 <input type="text" id="aiCommandInput" class="w-full bg-gray-800 border border-gray-600 rounded-md p-2 text-white focus:ring-2 focus:ring-indigo-500" placeholder="e.g., set an alarm for 8am tomorrow...">
@@ -36,9 +45,9 @@
             <p id="aiStatus" class="text-center text-sm mt-2 text-yellow-400 h-5"></p>
         </section>
 
-
         <!-- Alarms List -->
         <section id="alarms-list-section">
+            <!-- ... (no changes in this section) ... -->
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-white">Your Alarms</h2>
                 <button id="addAlarmBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105">
@@ -49,11 +58,11 @@
                 <!-- Alarm items will be injected here -->
             </div>
         </section>
-
     </div>
 
     <!-- Alarm Modal -->
     <div id="alarmModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <!-- ... (no changes in this modal) ... -->
         <div class="bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md space-y-5 transform transition-all scale-95 opacity-0" id="modalContent">
             <h2 class="text-2xl font-bold text-center text-white" id="modalTitle">Set Alarm</h2>
             
@@ -97,11 +106,89 @@
     
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Backend API URL
-    const API_URL = 'http://localhost:8080/api/alarms';
+    const API_URL = 'http://localhost:8080/api';
+    const ALARMS_API_URL = `${API_URL}/alarms`;
 
+    // --- PWA & NOTIFICATION LOGIC ---
+    const enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
+    const notificationStatus = document.getElementById('notificationStatus');
+    let swRegistration = null;
+
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(swReg => {
+                console.log('Service Worker registered.', swReg);
+                swRegistration = swReg;
+                initializeNotificationUI();
+            })
+            .catch(error => console.error('Service Worker registration failed:', error));
+    } else {
+        console.warn('Push messaging is not supported');
+        enableNotificationsBtn.textContent = 'Notifications Not Supported';
+        enableNotificationsBtn.disabled = true;
+    }
+    
+    function initializeNotificationUI() {
+        if (Notification.permission === 'granted') {
+            enableNotificationsBtn.style.display = 'none';
+            notificationStatus.textContent = 'Notifications are enabled.';
+        } else {
+            enableNotificationsBtn.addEventListener('click', () => {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        subscribeUser();
+                        enableNotificationsBtn.style.display = 'none';
+                        notificationStatus.textContent = 'Notifications have been enabled!';
+                    } else {
+                        notificationStatus.textContent = 'Notification permission was denied.';
+                    }
+                });
+            });
+        }
+    }
+    
+    async function subscribeUser() {
+        try {
+            const response = await fetch(`${API_URL}/vapid-public-key`);
+            const { publicKey } = await response.json();
+            const applicationServerKey = urlBase64ToUint8Array(publicKey);
+            
+            const subscription = await swRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: applicationServerKey
+            });
+
+            console.log('User is subscribed:', subscription);
+            await saveSubscription(subscription);
+
+        } catch(err) {
+            console.error('Failed to subscribe the user: ', err);
+        }
+    }
+
+    async function saveSubscription(subscription) {
+        await fetch(`${API_URL}/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    // --- EXISTING ALARM CLOCK LOGIC ---
     // UI ELEMENTS
     const currentTimeEl = document.getElementById('currentTime');
+    // ... (rest of the existing variables)
     const alarmsContainer = document.getElementById('alarmsContainer');
     const addAlarmBtn = document.getElementById('addAlarmBtn');
     const alarmModal = document.getElementById('alarmModal');
@@ -143,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API CALLS ---
     async function fetchAllAlarms() {
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(ALARMS_API_URL);
             if (!response.ok) throw new Error('Network response was not ok');
             const alarms = await response.json();
             alarmsCache = alarms;
@@ -156,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveAlarmToServer(alarmData) {
         const method = alarmData.id ? 'PUT' : 'POST';
-        const url = alarmData.id ? `${API_URL}/${alarmData.id}` : API_URL;
+        const url = alarmData.id ? `${ALARMS_API_URL}/${alarmData.id}` : ALARMS_API_URL;
         
         try {
             const response = await fetch(url, {
@@ -165,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(alarmData)
             });
             if (!response.ok) throw new Error('Failed to save alarm');
-            await fetchAllAlarms(); // Refresh list
+            await fetchAllAlarms();
         } catch (error) {
             console.error('Error saving alarm:', error);
         }
@@ -173,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteAlarmFromServer(alarmId) {
         try {
-            const response = await fetch(`${API_URL}/${alarmId}`, { method: 'DELETE' });
+            const response = await fetch(`${ALARMS_API_URL}/${alarmId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Failed to delete alarm');
             await fetchAllAlarms();
         } catch (error) {
@@ -183,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function toggleAlarmOnServer(alarmId) {
         try {
-            const response = await fetch(`${API_URL}/${alarmId}/toggle`, { method: 'PATCH' });
+            const response = await fetch(`${ALARMS_API_URL}/${alarmId}/toggle`, { method: 'PATCH' });
             if (!response.ok) throw new Error('Failed to toggle alarm');
             await fetchAllAlarms();
         } catch (error) {
@@ -195,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aiStatus.textContent = 'Processing...';
         processAiCommandBtn.disabled = true;
         try {
-            const response = await fetch(`${API_URL}/process-command`, {
+            const response = await fetch(`${ALARMS_API_URL}/process-command`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command })
@@ -216,33 +303,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- UI RENDERING & MODAL ---
+    // --- UI RENDERING & MODAL (no changes) ---
     function renderAlarms(alarms) {
         alarmsContainer.innerHTML = '';
         if (!alarms || alarms.length === 0) {
             alarmsContainer.innerHTML = `<p class="text-center text-gray-500">No alarms set. Add one to get started!</p>`;
             return;
         }
-        
-        // Sort alarms by time
         alarms.sort((a, b) => a.time.localeCompare(b.time));
-        
         alarms.forEach(alarm => {
             const alarmEl = document.createElement('div');
             alarmEl.className = 'flex items-center justify-between bg-gray-700/70 p-4 rounded-lg';
             alarmEl.dataset.id = alarm.id;
-
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const recurringDays = alarm.daysOfWeek.sort().map(d => days[d]).join(', ');
-            
             let recurringText = alarm.name ? `${alarm.name} | ` : '';
             recurringText += recurringDays ? recurringDays : 'Once';
-            
             let recurrenceRule = '';
             if (alarm.endDate) {
                 recurrenceRule += ` until ${new Date(alarm.endDate + 'T00:00:00').toLocaleDateString()}`;
             }
-
             alarmEl.innerHTML = `
                 <div>
                     <p class="text-2xl font-semibold text-white">${formatTimeForDisplay(alarm.time)}</p>
@@ -264,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal(alarm = null) {
         modalContent.classList.remove('scale-95', 'opacity-0');
         alarmModal.classList.remove('hidden');
-
         if (alarm) {
             modalTitle.textContent = 'Edit Alarm';
             alarmIdInput.value = alarm.id;
@@ -290,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => alarmModal.classList.add('hidden'), 150);
     }
 
-    // --- EVENT HANDLERS ---
+    // --- EVENT HANDLERS (no changes) ---
     addAlarmBtn.addEventListener('click', () => openModal());
     cancelAlarmBtn.addEventListener('click', closeModal);
     alarmModal.addEventListener('click', (e) => {
@@ -300,23 +379,12 @@ document.addEventListener('DOMContentLoaded', () => {
     saveAlarmBtn.addEventListener('click', () => {
         const id = alarmIdInput.value || null;
         const time = alarmTimeInput.value;
-        if (!time) {
-            alert('Please select a time for the alarm.');
-            return;
-        }
-        
-        const daysOfWeek = Array.from(document.querySelectorAll('.day-checkbox:checked'))
-            .map(cb => parseInt(cb.closest('[data-day]').dataset.day));
-            
+        if (!time) { alert('Please select a time for the alarm.'); return; }
+        const daysOfWeek = Array.from(document.querySelectorAll('.day-checkbox:checked')).map(cb => parseInt(cb.closest('[data-day]').dataset.day));
         const alarmData = {
-            id: id,
-            name: alarmNameInput.value,
-            time,
-            daysOfWeek,
-            isActive: true,
-            endDate: runUntilInput.value || null
+            id: id, name: alarmNameInput.value, time, daysOfWeek,
+            isActive: true, endDate: runUntilInput.value || null
         };
-        
         saveAlarmToServer(alarmData);
         closeModal();
     });
@@ -324,10 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
     alarmsContainer.addEventListener('click', e => {
         const target = e.target.closest('button, .toggle-alarm');
         if (!target) return;
-        
         const alarmEl = target.closest('[data-id]');
         const alarmId = alarmEl.dataset.id;
-        
         if (target.classList.contains('delete-alarm')) {
             deleteAlarmFromServer(alarmId);
         } else if (target.classList.contains('edit-alarm')) {
@@ -340,14 +406,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     processAiCommandBtn.addEventListener('click', () => {
         const command = aiCommandInput.value.trim();
-        if (command) {
-            processAiCommand(command);
-        }
+        if (command) { processAiCommand(command); }
     });
     aiCommandInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            processAiCommandBtn.click();
-        }
+        if (e.key === 'Enter') { processAiCommandBtn.click(); }
     });
 });
 </script>
