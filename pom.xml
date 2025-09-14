@@ -36,6 +36,20 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Java Dotenv for reading .env files -->
+		<dependency>
+			<groupId>io.github.cdimascio</groupId>
+			<artifactId>dotenv-java</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+
+		<!-- Library for sending Web Push Notifications -->
+		<dependency>
+			<groupId>com.github.maruTA-bis5</groupId>
+			<artifactId>web-push-java</artifactId>
+			<version>5.1.1</version>
+		</dependency>
+
 		<!-- Project Lombok to reduce boilerplate code -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -69,3 +83,5 @@
 	</build>
 
 </project>
+
+
